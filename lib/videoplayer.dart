@@ -1,48 +1,49 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:fu_za_mobile_application/video.dart';
 import 'package:video_player/video_player.dart';
 
 void main() => runApp(VideoPlayerApp());
 
 class VideoPlayerApp extends StatelessWidget {
+  final Video video;
+
+  VideoPlayerApp({this.video});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(title: 'Fu-Za learner ship', home: VideoPlayerScreen());
+    return MaterialApp(
+        title: 'Fu-Za learner ship', home: VideoPlayerScreen(video: video));
   }
 }
 
 class VideoPlayerScreen extends StatefulWidget {
-  VideoPlayerScreen({Key key}) : super(key: key);
+  final Video video;
+
+  VideoPlayerScreen({Key key, this.video}) : super(key: key);
 
   @override
-  _VideoPlayerScreenState createState() => _VideoPlayerScreenState();
+  _VideoPlayerScreenState createState() => _VideoPlayerScreenState(video);
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+  final Video video;
   VideoPlayerController _controller;
-  Future<void> _initializeVideoPlayerFuture;
+
+  _VideoPlayerScreenState(this.video);
 
   @override
   void initState() {
-    // Create an store the VideoPlayerController. The VideoPlayerController
-    // offers several different constructors to play videos from assets, files,
-    // or the internet.
-//    _controller = VideoPlayerController.network(
-//      'http://turtletech.ddns.me:100/fu-za/download/83ffac9f-cb5b-4419-900a-d6ddb59a177b/a797eea9-f471-439d-a7f0-42bec9871124',
-//    );
     super.initState();
-    File file = new File(
-        '/data/data/co.za.turtletech.fuza.fu_za_mobile_application/cache/test/Jy bly stil.mp4');
+    String path = video.path;
+    File file = new File('$path');
     _controller = VideoPlayerController.file(file);
     _controller.addListener(() {
       setState(() {});
     });
     _controller.initialize().then((_) => setState(() {}));
     _controller.play();
-
-//    _initializeVideoPlayerFuture = _controller.initialize();
   }
 
   @override
@@ -52,7 +53,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
