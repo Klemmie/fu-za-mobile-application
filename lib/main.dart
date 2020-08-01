@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fu_za_mobile_application/video.dart';
@@ -17,7 +19,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Downloader().videoSync();
     return MaterialApp(
       title: _title,
       home: MyStatefulWidget(),
@@ -84,13 +85,33 @@ class MyStatefulWidget extends StatefulWidget {
 
 class MyStatefulWidgetState extends State<MyStatefulWidget> {
   Future<List<Video>> videos;
+  Timer timer;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
-    videos = Downloader().getVideoListLocal();
+    fetchVideos();
+
+    timer = Timer.periodic(Duration(seconds: 600), (Timer t) => fetchVideos());
+  }
+
+  void fetchVideos() async {
+    print('fetch videos');
+    syncServerVideo();
+    setState(() {
+      videos = Downloader().getVideoListLocal();
+    });
+  }
+
+  void syncServerVideo() async {
+    Downloader().videoSync();
+  }
+
+  Future<void> _fetchVideos() async{
+    setState(() {
+      fetchVideos();
+    });
   }
 
   @override
@@ -189,55 +210,59 @@ class MyStatefulWidgetState extends State<MyStatefulWidget> {
             future: videos,
             builder: (context, snapshot) {
               return snapshot.hasData
-                  ? ListView.builder(
-                      itemCount: snapshot.data.length,
-                      itemBuilder: (_, int position) {
-                        final item = snapshot.data[position];
-                        return new GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          VideoPlayerApp(video: item)
-                                              .build(context)));
-                            },
-                            child: new Column(
-                              children: <Widget>[
-                                Container(
-                                  padding:
-                                      EdgeInsets.only(left: 15.0, right: 15.0),
-                                  child: new Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: <Widget>[
-                                      new Container(
-                                        child: Text(
-                                          item.name,
-                                          textAlign: TextAlign.left,
-                                          style: TextStyle(fontSize: 30),
-                                          maxLines: 1,
-                                        ),
-                                        decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.only(
-                                                topLeft: Radius.circular(10.0),
-                                                topRight:
-                                                    Radius.circular(10.0))),
+                  ? RefreshIndicator(
+                      child: ListView.builder(
+                          itemCount: snapshot.data.length,
+                          itemBuilder: (_, int position) {
+                            final item = snapshot.data[position];
+                            return new GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              VideoPlayerApp(video: item)
+                                                  .build(context)));
+                                },
+                                child: new Column(
+                                  children: <Widget>[
+                                    Container(
+                                      padding: EdgeInsets.only(
+                                          left: 15.0, right: 15.0),
+                                      child: new Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: <Widget>[
+                                          new Container(
+                                            child: Text(
+                                              item.name,
+                                              textAlign: TextAlign.left,
+                                              style: TextStyle(fontSize: 30),
+                                              maxLines: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.only(
+                                                    topLeft:
+                                                        Radius.circular(10.0),
+                                                    topRight:
+                                                        Radius.circular(10.0))),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: EdgeInsets.only(
-                                      left: 15.0, right: 15.0, top: 0.0),
-                                  child: Container(
-                                    color: Colors.white,
-                                    height: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ));
-                      })
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.only(
+                                          left: 15.0, right: 15.0, top: 0.0),
+                                      child: Container(
+                                        color: Colors.white,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                  ],
+                                ));
+                          }),
+                onRefresh: _fetchVideos,
+              )
                   : Center(
                       child: CircularProgressIndicator(),
                     );
@@ -264,31 +289,6 @@ class MyStatefulWidgetState extends State<MyStatefulWidget> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class FirstScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    VideoPlayerApp videoPlayerApp = new VideoPlayerApp();
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('First Screen'),
-      ),
-      body: Center(
-        child: RaisedButton(
-          color: Colors.red,
-          child: Text('Go to Second Screen'),
-          onPressed: () {
-            //Use`Navigator` widget to push the second screen to out stack of screens
-            Navigator.of(context)
-                .push(MaterialPageRoute<Null>(builder: (BuildContext context) {
-              return videoPlayerApp.build(context);
-            }));
-          },
-        ),
-      ),
     );
   }
 }

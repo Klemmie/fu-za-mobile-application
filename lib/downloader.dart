@@ -36,7 +36,22 @@ class Downloader {
 
   Future<List<Video>> getVideoListLocal() async {
     List videos = await DatabaseHelper().video();
+    List<int> nums = new List();
+    for (Video video in videos) {
+      nums.add(video.vidOrder);
+    }
+    if (nums != null && nums.isNotEmpty) {
+      nums.sort();
 
+      List<Video> returnVideos = new List();
+      for (int videoOrder in nums) {
+        for (Video video in videos) {
+          if (video.vidOrder == videoOrder) returnVideos.add(video);
+        }
+      }
+
+      return returnVideos;
+    }
     return videos;
   }
 
@@ -89,12 +104,14 @@ class Downloader {
     }
 
     Video insertedVideo = new Video(
+        vidOrder: video.vidOrder,
         name: name,
         course: course,
         level: "1",
         guid: guid,
         watched: "false",
-        path: '$dir/$course/$name.mp4');
+        path: '$dir/$course/$name.mp4',
+        date: DateTime.now().toString());
     await DatabaseHelper().insertVideo(insertedVideo);
   }
 
@@ -114,29 +131,77 @@ class Downloader {
 
   void videoSync() async {
     User user = await getUserDetails();
-    for (String course in user.registeredCourses.split(",")) {
-      List<Video> videoList = await getVideoListServer(course, "1");
+    List<Video> local = await getVideoListLocal();
 
-      List<Video> local = await getVideoListLocal();
+    Video firstVideo;
+    if (local.isNotEmpty) firstVideo = local.last;
 
-      var hour = new DateTime.now().hour;
-      if (hour > 6 && hour < 23) {
-        print('Download time baby!');
-      } else
-        print('Sorry neh...');
+    int hour = new DateTime.now().hour;
+    if (hour >= 6 && hour <= 23) {
+      print('Download time baby!');
+    } else
+      print('Sorry neh...');
 
-      for (Video download in videoList) {
-        int add = 1;
-        for (Video deviceVideo in local) {
-          if (download.guid.compareTo(deviceVideo.guid) == 0) {
-            add = 0;
+    if (firstVideo == null ||
+        DateTime.parse(firstVideo.date).difference(DateTime.now()) >=
+            new Duration(days: 7))
+      for (String course in user.registeredCourses.split(",")) {
+        List<Video> videoList = await getVideoListServer(course, "1");
+
+        for (Video download in videoList) {
+          int add = 1;
+          for (Video deviceVideo in local) {
+            if (download.guid.compareTo(deviceVideo.guid) == 0) {
+              add = 0;
+            }
+          }
+
+          if (add == 1) {
+            downloadFile(user.cellNumber, download);
+            break;
           }
         }
-
-        if (add == 1) {
-          downloadFile(user.cellNumber, download);
-        }
       }
+
+    for (Video deviceVideo in local) {
+      if (DateTime.parse(deviceVideo.date).difference(DateTime.now()) >
+          new Duration(days: 14)) {
+        Directory(deviceVideo.path).deleteSync(recursive: true);
+        await DatabaseHelper().deleteVideo(deviceVideo.guid);
+      } else
+        print('Not old enough to delete');
+    }
+
+    for (Video deviceVideo in local) {
+      if (deviceVideo.watched == "true") {
+        updateWatched(deviceVideo, user.cellNumber);
+      }
+    }
+  }
+
+  void updateWatched(Video deviceVideo, String cellNumber) async {
+    final response = await http.post(
+        'http://turtletech.ddns.me:100/fu-za/addWatched/' +
+            cellNumber +
+            '/' +
+            deviceVideo.guid +
+            '/true');
+
+    if (response.statusCode == 201) {
+      print(
+          'Added to watched:' + deviceVideo.guid + ' list for: ' + cellNumber);
+      Video watchedVideo = new Video(
+          vidOrder: deviceVideo.vidOrder,
+          name: deviceVideo.name,
+          course: deviceVideo.course,
+          level: deviceVideo.level,
+          guid: deviceVideo.guid,
+          watched: "synced",
+          path: deviceVideo.path,
+          date: deviceVideo.date);
+      DatabaseHelper().updateVideo(watchedVideo);
+    } else {
+      throw Exception('Failed to update watched video');
     }
   }
 }

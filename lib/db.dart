@@ -51,7 +51,7 @@ class DatabaseHelper {
       join(await getDatabasesPath(), 'vids.db'),
       onCreate: (db, version) {
         return db.execute(
-          "CREATE TABLE video(name TEXT, course TEXT, level TEXT, guid TEXT, watched TEXT, path TEXT)",
+          "CREATE TABLE video(vidOrder INTEGER, name TEXT, course TEXT, level TEXT, guid TEXT, watched TEXT, path TEXT, date TEXT)",
         );
       },
       version: 1,
@@ -77,12 +77,14 @@ class DatabaseHelper {
 
     return List.generate(maps.length, (i) {
       return Video(
+        vidOrder: maps[i]['vidOrder'],
         name: maps[i]['name'],
         course: maps[i]['course'],
         level: maps[i]['level'],
         guid: maps[i]['guid'],
         watched: maps[i]['watched'],
         path: maps[i]['path'],
+        date: maps[i]['date'],
       );
     });
   }
