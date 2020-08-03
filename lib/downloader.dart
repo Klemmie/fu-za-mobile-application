@@ -55,15 +55,13 @@ class Downloader {
     return videos;
   }
 
-  Future<List<Video>> getVideoListServer(String course, String level) async {
+  Future<List<Video>> getVideoListServer(String course) async {
     User user = await getUserDetails();
     String cellNumber = user.cellNumber;
 
     final response = await http.get(
         'http://turtletech.ddns.me:100/fu-za/videoList/' +
             course +
-            '/' +
-            level +
             '/' +
             cellNumber);
 
@@ -107,7 +105,6 @@ class Downloader {
         vidOrder: video.vidOrder,
         name: name,
         course: course,
-        level: "1",
         guid: guid,
         watched: "false",
         path: '$dir/$course/$name.mp4',
@@ -137,7 +134,7 @@ class Downloader {
     if (local.isNotEmpty) firstVideo = local.last;
 
     int hour = new DateTime.now().hour;
-    if (hour >= 6 && hour <= 23) {
+    if (hour <= 18 || hour >= 23) {
       print('Download time baby!');
     } else
       print('Sorry neh...');
@@ -146,7 +143,7 @@ class Downloader {
         DateTime.parse(firstVideo.date).difference(DateTime.now()) >=
             new Duration(days: 7))
       for (String course in user.registeredCourses.split(",")) {
-        List<Video> videoList = await getVideoListServer(course, "1");
+        List<Video> videoList = await getVideoListServer(course);
 
         for (Video download in videoList) {
           int add = 1;
@@ -194,7 +191,6 @@ class Downloader {
           vidOrder: deviceVideo.vidOrder,
           name: deviceVideo.name,
           course: deviceVideo.course,
-          level: deviceVideo.level,
           guid: deviceVideo.guid,
           watched: "synced",
           path: deviceVideo.path,

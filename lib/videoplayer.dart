@@ -104,14 +104,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void checkVideo() {
-    if (controller.value.position == controller.value.duration) {
+    if (controller.value.position >= (controller.value.duration - new Duration(seconds: 5))) {
       Video watchedVideo = new Video(
           vidOrder: video.vidOrder,
           name: video.name,
           course: video.course,
-          level: video.level,
           guid: video.guid,
-          watched: "true",
+          watched: (video.watched == "false") ? "true" : video.watched,
           path: video.path,
           date: video.date);
       DatabaseHelper().updateVideo(watchedVideo);
