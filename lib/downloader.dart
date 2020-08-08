@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:fu_za_mobile_application/user.dart';
 import 'package:fu_za_mobile_application/video.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:mobile_number/mobile_number.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -21,8 +22,8 @@ class Downloader {
     } else {
       String cellNumber = await initMobileNumberState();
 
-      final response = await http
-          .get('http://turtletech.ddns.me:100/fu-za/userDetails/' + cellNumber);
+      final response =
+          await sendRequestToServer('get', 'userDetails/' + cellNumber);
 
       if (response.statusCode == 200) {
         User newUser = User.fromJson(json.decode(response.body));
@@ -36,34 +37,40 @@ class Downloader {
 
   Future<List<Video>> getVideoListLocal() async {
     List videos = await DatabaseHelper().video();
-    List<int> nums = new List();
-    for (Video video in videos) {
-      nums.add(video.vidOrder);
-    }
-    if (nums != null && nums.isNotEmpty) {
-      nums.sort();
+    List<String> course = new List();
+    List<Video> returnVideos = new List();
 
-      List<Video> returnVideos = new List();
-      for (int videoOrder in nums) {
-        for (Video video in videos) {
-          if (video.vidOrder == videoOrder) returnVideos.add(video);
+    for (Video courseVids in videos) {
+      if (!course.contains(courseVids.course)) course.add(courseVids.course);
+    }
+    for (String courseName in course) {
+      List<int> nums = new List();
+      for (Video video in videos) {
+        if (video.course == courseName) nums.add(video.vidOrder);
+      }
+      if (nums != null && nums.isNotEmpty) {
+        nums.sort();
+
+        for (int videoOrder in nums) {
+          for (Video video in videos) {
+            if (video.course == courseName) {
+              if (video.vidOrder == videoOrder) {
+                returnVideos.add(video);
+              }
+            }
+          }
         }
       }
-
-      return returnVideos;
     }
-    return videos;
+    return returnVideos;
   }
 
   Future<List<Video>> getVideoListServer(String course) async {
     User user = await getUserDetails();
     String cellNumber = user.cellNumber;
 
-    final response = await http.get(
-        'http://turtletech.ddns.me:100/fu-za/videoList/' +
-            course +
-            '/' +
-            cellNumber);
+    final response = await sendRequestToServer(
+        'get', 'videoList/' + course + '/' + cellNumber);
 
     if (response.statusCode == 200) {
       List<Video> videos = List();
@@ -81,12 +88,8 @@ class Downloader {
     String name = video.name;
     String course = video.course;
     String guid = video.guid;
-    String url = 'http://turtletech.ddns.me:100/fu-za/download/' +
-        cellNumber +
-        '/' +
-        guid;
-    http.Client _client = new http.Client();
-    var req = await _client.get(Uri.parse(url));
+    var req =
+        await sendRequestToServer('get', 'download/' + cellNumber + '/' + guid);
     var bytes = req.bodyBytes;
     String dir = (await getApplicationDocumentsDirectory()).path;
     if (new Directory('$dir/$course').existsSync()) {
@@ -130,19 +133,27 @@ class Downloader {
     User user = await getUserDetails();
     List<Video> local = await getVideoListLocal();
 
-    Video firstVideo;
-    if (local.isNotEmpty) firstVideo = local.last;
-
     int hour = new DateTime.now().hour;
     if (hour <= 18 || hour >= 23) {
       print('Download time baby!');
     } else
       print('Sorry neh...');
 
-    if (firstVideo == null ||
-        DateTime.parse(firstVideo.date).difference(DateTime.now()) >=
-            new Duration(days: 7))
-      for (String course in user.registeredCourses.split(",")) {
+    for (String course in user.registeredCourses.split(",")) {
+      Video firstVideo;
+      for (Video lcVid in local) {
+        if (lcVid.course == course) {
+          if (firstVideo == null ||
+              DateTime.parse(firstVideo.date)
+                  .isBefore(DateTime.parse(lcVid.date))) {
+            firstVideo = lcVid;
+          }
+        }
+      }
+
+      if (firstVideo == null ||
+          DateTime.parse(firstVideo.date).difference(DateTime.now()) >=
+              new Duration(days: 7)) {
         List<Video> videoList = await getVideoListServer(course);
 
         for (Video download in videoList) {
@@ -159,6 +170,7 @@ class Downloader {
           }
         }
       }
+    }
 
     for (Video deviceVideo in local) {
       if (DateTime.parse(deviceVideo.date).difference(DateTime.now()) >
@@ -177,12 +189,14 @@ class Downloader {
   }
 
   void updateWatched(Video deviceVideo, String cellNumber) async {
-    final response = await http.post(
-        'http://turtletech.ddns.me:100/fu-za/addWatched/' +
+    final response = await sendRequestToServer(
+        'post',
+        'addWatched/' +
             cellNumber +
             '/' +
             deviceVideo.guid +
-            '/true');
+            '/true/' +
+            DateTime.now().toIso8601String());
 
     if (response.statusCode == 201) {
       print(
@@ -199,5 +213,23 @@ class Downloader {
     } else {
       throw Exception('Failed to update watched video');
     }
+  }
+
+  Future<http.Response> sendRequestToServer(String reqType, String url) async {
+    bool trustSelfSigned = true;
+    HttpClient httpClient = new HttpClient()
+      ..badCertificateCallback =
+          ((X509Certificate cert, String host, int port) => trustSelfSigned);
+    IOClient ioClient = new IOClient(httpClient);
+    var response;
+    if (reqType == 'post') {
+      response =
+          await ioClient.post("https://turtletech.ddns.me:100/fu-za/$url");
+    } else {
+      response =
+          await ioClient.get("https://turtletech.ddns.me:100/fu-za/$url");
+    }
+
+    return response;
   }
 }
