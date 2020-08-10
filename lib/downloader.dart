@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:mobile_number/mobile_number.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'db.dart';
 
@@ -84,7 +85,7 @@ class Downloader {
     }
   }
 
-  void downloadFile(String cellNumber, Video video) async {
+  void downloadVideo(String cellNumber, Video video) async {
     String name = video.name;
     String course = video.course;
     String guid = video.guid;
@@ -113,6 +114,41 @@ class Downloader {
         path: '$dir/$course/$name.mp4',
         date: DateTime.now().toString());
     await DatabaseHelper().insertVideo(insertedVideo);
+  }
+
+  void downloadPdf(String guid, String name) async {
+    if (await _requestPermissions()) {
+      User userDetails = await getUserDetails();
+      String cellNumber = userDetails.cellNumber;
+      var req = await sendRequestToServer(
+          'get', 'downloadPdf/' + cellNumber + '/' + guid);
+      var bytes = req.bodyBytes;
+      if (new Directory('/sdcard/Download/').existsSync()) {
+        File file = new File('/sdcard/Download/$name.pdf');
+        await file.writeAsBytes(bytes);
+        print('Writing');
+      } else {
+        new Directory('/sdcard/Download')
+            .create(recursive: true)
+            .then((Directory directory) async {
+          File file = new File('/sdcard/Download/$name.pdf');
+          await file.writeAsBytes(bytes);
+        });
+      }
+    }
+  }
+
+  Future<bool> _requestPermissions() async {
+    var permission = await PermissionHandler()
+        .checkPermissionStatus(PermissionGroup.storage);
+
+    if (permission != PermissionStatus.granted) {
+      await PermissionHandler().requestPermissions([PermissionGroup.storage]);
+      permission = await PermissionHandler()
+          .checkPermissionStatus(PermissionGroup.storage);
+    }
+
+    return permission == PermissionStatus.granted;
   }
 
   Future<String> initMobileNumberState() async {
@@ -165,7 +201,7 @@ class Downloader {
           }
 
           if (add == 1) {
-            downloadFile(user.cellNumber, download);
+            downloadVideo(user.cellNumber, download);
             break;
           }
         }
@@ -199,8 +235,6 @@ class Downloader {
             DateTime.now().toIso8601String());
 
     if (response.statusCode == 201) {
-      print(
-          'Added to watched:' + deviceVideo.guid + ' list for: ' + cellNumber);
       Video watchedVideo = new Video(
           vidOrder: deviceVideo.vidOrder,
           name: deviceVideo.name,

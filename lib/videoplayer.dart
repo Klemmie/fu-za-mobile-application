@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:chewie/chewie.dart';
 import 'package:chewie/src/chewie_player.dart';
 import 'package:flutter/material.dart';
+import 'package:fu_za_mobile_application/body.dart';
 import 'package:fu_za_mobile_application/db.dart';
 import 'package:fu_za_mobile_application/video.dart';
 import 'package:video_player/video_player.dart';
@@ -36,6 +37,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   ChewieController _chewieController;
   TargetPlatform _platform;
   VideoPlayerController controller;
+  bool firstFull = true;
 
   _VideoPlayerScreenState(this.video);
 
@@ -73,6 +75,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     // Ensure disposing of the VideoPlayerController to free up resources.
     controller.dispose();
     _chewieController.dispose();
+    print('Disposed');
 
     super.dispose();
   }
@@ -104,7 +107,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void checkVideo() {
-    if (controller.value.position >= (controller.value.duration - new Duration(seconds: 5))) {
+    if (controller.value.position >=
+        (controller.value.duration - new Duration(seconds: 5))) {
       Video watchedVideo = new Video(
           vidOrder: video.vidOrder,
           name: video.name,
@@ -114,6 +118,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           path: video.path,
           date: video.date);
       DatabaseHelper().updateVideo(watchedVideo);
+    }
+
+    if (controller.value.position >= controller.value.duration) {
+      _chewieController.exitFullScreen();
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => FuZaStatefulWidget()), (route) => false);
     }
   }
 }
