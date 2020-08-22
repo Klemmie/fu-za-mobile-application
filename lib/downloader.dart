@@ -16,15 +16,17 @@ import 'db.dart';
 
 class Downloader {
   Future<User> getUserDetails() async {
-    User user = await DatabaseHelper().user();
+    User user = null;//await DatabaseHelper().user();
 
     if (user != null) {
       return user;
     } else {
       String cellNumber = await initMobileNumberState();
+      cellNumber = "270737224748";
+//      print(cellNumber);
 
       final response =
-          await sendRequestToServer('get', 'userDetails/' + cellNumber);
+          await sendRequestToServer('get', 'user/userDetails/' + cellNumber);
 
       if (response.statusCode == 200) {
         User newUser = User.fromJson(json.decode(response.body));
@@ -71,7 +73,7 @@ class Downloader {
     String cellNumber = user.cellNumber;
 
     final response = await sendRequestToServer(
-        'get', 'videoList/' + course + '/' + cellNumber);
+        'get', 'video/videoList/' + course + '/' + cellNumber);
 
     if (response.statusCode == 200) {
       List<Video> videos = List();
@@ -89,8 +91,8 @@ class Downloader {
     String name = video.name;
     String course = video.course;
     String guid = video.guid;
-    var req =
-        await sendRequestToServer('get', 'download/' + cellNumber + '/' + guid);
+    var req = await sendRequestToServer(
+        'get', 'mobile/download/' + cellNumber + '/' + guid);
     var bytes = req.bodyBytes;
     String dir = (await getApplicationDocumentsDirectory()).path;
     if (new Directory('$dir/$course').existsSync()) {
@@ -121,7 +123,7 @@ class Downloader {
       User userDetails = await getUserDetails();
       String cellNumber = userDetails.cellNumber;
       var req = await sendRequestToServer(
-          'get', 'downloadPdf/' + cellNumber + '/' + guid);
+          'get', 'mobile/downloadPdf/' + cellNumber + '/' + guid);
       var bytes = req.bodyBytes;
       if (new Directory('/sdcard/Download/').existsSync()) {
         File file = new File('/sdcard/Download/$name.pdf');
@@ -227,7 +229,7 @@ class Downloader {
   void updateWatched(Video deviceVideo, String cellNumber) async {
     final response = await sendRequestToServer(
         'post',
-        'addWatched/' +
+        'watched/addWatched/' +
             cellNumber +
             '/' +
             deviceVideo.guid +
@@ -257,11 +259,9 @@ class Downloader {
     IOClient ioClient = new IOClient(httpClient);
     var response;
     if (reqType == 'post') {
-      response =
-          await ioClient.post("https://turtletech.ddns.me:100/fu-za/$url");
+      response = await ioClient.post("https://turtletech.ddns.me:100/$url");
     } else {
-      response =
-          await ioClient.get("https://turtletech.ddns.me:100/fu-za/$url");
+      response = await ioClient.get("https://turtletech.ddns.me:100/$url");
     }
 
     return response;
