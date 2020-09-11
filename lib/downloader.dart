@@ -10,20 +10,17 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:mobile_number/mobile_number.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'db.dart';
 
 class Downloader {
   Future<User> getUserDetails() async {
-    User user = null;//await DatabaseHelper().user();
+    User user = await DatabaseHelper().user();
 
     if (user != null) {
       return user;
     } else {
       String cellNumber = await initMobileNumberState();
-      cellNumber = "270737224748";
-//      print(cellNumber);
 
       final response =
           await sendRequestToServer('get', 'user/userDetails/' + cellNumber);
@@ -118,41 +115,6 @@ class Downloader {
     await DatabaseHelper().insertVideo(insertedVideo);
   }
 
-  void downloadPdf(String guid, String name) async {
-    if (await _requestPermissions()) {
-      User userDetails = await getUserDetails();
-      String cellNumber = userDetails.cellNumber;
-      var req = await sendRequestToServer(
-          'get', 'mobile/downloadPdf/' + cellNumber + '/' + guid);
-      var bytes = req.bodyBytes;
-      if (new Directory('/sdcard/Download/').existsSync()) {
-        File file = new File('/sdcard/Download/$name.pdf');
-        await file.writeAsBytes(bytes);
-        print('Writing');
-      } else {
-        new Directory('/sdcard/Download')
-            .create(recursive: true)
-            .then((Directory directory) async {
-          File file = new File('/sdcard/Download/$name.pdf');
-          await file.writeAsBytes(bytes);
-        });
-      }
-    }
-  }
-
-  Future<bool> _requestPermissions() async {
-    var permission = await PermissionHandler()
-        .checkPermissionStatus(PermissionGroup.storage);
-
-    if (permission != PermissionStatus.granted) {
-      await PermissionHandler().requestPermissions([PermissionGroup.storage]);
-      permission = await PermissionHandler()
-          .checkPermissionStatus(PermissionGroup.storage);
-    }
-
-    return permission == PermissionStatus.granted;
-  }
-
   Future<String> initMobileNumberState() async {
     if (!await MobileNumber.hasPhonePermission) {
       await MobileNumber.requestPhonePermission;
@@ -160,7 +122,15 @@ class Downloader {
     }
 
     try {
-      return await MobileNumber.mobileNumber;
+      List<SimCard> simCards = await MobileNumber.getSimCards;
+      String mobileNumber = "";
+      for (SimCard simCard in simCards) {
+        if (simCard.number != null) {
+          mobileNumber = simCard.number;
+          break;
+        }
+      }
+      return mobileNumber;
     } on PlatformException catch (e) {
       debugPrint("Failed to get mobile number because of '${e.message}'");
     }

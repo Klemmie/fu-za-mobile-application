@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:fu_za_mobile_application/user.dart';
 import 'package:fu_za_mobile_application/video.dart';
 import 'package:fu_za_mobile_application/videoplayer.dart';
+import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 
 import 'downloader.dart';
 
@@ -28,6 +32,10 @@ class FuZaStatefulWidget extends StatefulWidget {
 class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
   Future<List<Video>> videos;
   Timer timer;
+  int total = 0, received = 0;
+  http.StreamedResponse response;
+  List<int> bytes = [];
+  File pdf;
 
   @override
   void initState() {
@@ -52,6 +60,49 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
     setState(() {
       fetchVideos();
     });
+  }
+
+  Future<void> downloadPdf(String guid, String name) async {
+    if (await _requestPermissions()) {
+      User userDetails = await Downloader().getUserDetails();
+      String cellNumber = userDetails.cellNumber;
+      bool trustSelfSigned = true;
+      HttpClient httpClient = new HttpClient()
+        ..badCertificateCallback =
+            ((X509Certificate cert, String host, int port) => trustSelfSigned);
+      HttpClientRequest httpClientRequest = await httpClient.getUrl(Uri.parse(
+          "https://turtletech.ddns.me:100/" + cellNumber + "/" + guid));
+
+      HttpClientResponse httpClientResponse = await httpClientRequest.close();
+      received = 0;
+
+      httpClientResponse.listen((value) {
+        total = value.length;
+        setState(() {
+          bytes.addAll(value);
+          received += value.length;
+        });
+      }).onDone(() async {
+        final file = File("/sdcard/Download/$name.pdf");
+        await file.writeAsBytes(bytes);
+        setState(() {
+          pdf = file;
+        });
+      });
+    }
+  }
+
+  Future<bool> _requestPermissions() async {
+    var permission = await PermissionHandler()
+        .checkPermissionStatus(PermissionGroup.storage);
+
+    if (permission != PermissionStatus.granted) {
+      await PermissionHandler().requestPermissions([PermissionGroup.storage]);
+      permission = await PermissionHandler()
+          .checkPermissionStatus(PermissionGroup.storage);
+    }
+
+    return permission == PermissionStatus.granted;
   }
 
   List<Widget> videoList(List<Video> videos) {
@@ -102,6 +153,9 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
                             ),
                             color: Color.fromRGBO(204, 0, 0, 0.3),
                             materialTapTargetSize: MaterialTapTargetSize.padded,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18.0),
+                                side: BorderSide(color: Colors.red)),
                           ),
                         ],
                       ),
@@ -113,17 +167,20 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
                       Column(children: <Widget>[
                         FlatButton(
                           onPressed: () {
-                            Downloader().downloadPdf(video.guid, video.name);
+                            downloadPdf(video.guid, video.name);
                           },
                           textColor: Color.fromRGBO(255, 102, 0, 1),
-                          child: new Text(
-                            'Download material',
+                          child: Text(
+                            'Download Material',
                             style: TextStyle(
                                 fontWeight: FontWeight.w400, fontSize: 15),
                             textAlign: TextAlign.right,
                           ),
                           color: Color.fromRGBO(204, 0, 0, 0.3),
                           materialTapTargetSize: MaterialTapTargetSize.padded,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18.0),
+                              side: BorderSide(color: Colors.red)),
                         ),
                       ]),
                       Icon(
@@ -179,44 +236,47 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
               ],
             ),
           ),
-          /*3*/
-          Icon(
-            Icons.star,
-            color: Color.fromRGBO(255, 102, 0, 1),
-          ),
         ],
       ),
     );
 
     return MaterialApp(
-        title: 'Fu-Za Learning',
-        home: Container(
-          decoration: BoxDecoration(
-              image: DecorationImage(
-                  image: AssetImage("assets/real-background.png"),
-                  fit: BoxFit.cover)),
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              title: titleSection,
-              backgroundColor: Color.fromRGBO(51, 153, 102, 1),
-            ),
-            //removed
-            body: FutureBuilder<List<Video>>(
-                future: videos,
-                builder: (context, snapshot) {
-                  return snapshot.hasData
-                      ? RefreshIndicator(
-                          child: ListView(
-                            children: videoList(snapshot.data),
-                          ),
-                          onRefresh: _fetchVideos,
-                        )
-                      : Center(
-                          child: CircularProgressIndicator(),
-                        );
-                }),
+      title: 'Fu-Za Learning',
+      home: Container(
+        decoration: BoxDecoration(
+            image: DecorationImage(
+                image: AssetImage("assets/real-background.png"),
+                fit: BoxFit.cover)),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            title: titleSection,
+            backgroundColor: Color.fromRGBO(51, 153, 102, 1),
           ),
-        ));
+          //removed
+          body: FutureBuilder<List<Video>>(
+              future: videos,
+              builder: (context, snapshot) {
+                return snapshot.hasData
+                    ? RefreshIndicator(
+                        child: ListView(
+                          children: videoList(snapshot.data),
+                        ),
+                        onRefresh: _fetchVideos,
+                      )
+                    : Center(
+                        child: CircularProgressIndicator(),
+                      );
+              }),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {},
+            label: Text('${received}/${total} B'),
+            icon: Icon(Icons.save_alt),
+            backgroundColor: Color.fromRGBO(51, 153, 102, 1),
+          ),
+        ),
+      ),
+      debugShowCheckedModeBanner: false,
+    );
   }
 }

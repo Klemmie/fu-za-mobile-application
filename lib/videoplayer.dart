@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:chewie/chewie.dart';
-import 'package:chewie/src/chewie_player.dart';
 import 'package:flutter/material.dart';
 import 'package:fu_za_mobile_application/body.dart';
 import 'package:fu_za_mobile_application/db.dart';
