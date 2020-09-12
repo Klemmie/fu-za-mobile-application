@@ -223,7 +223,7 @@ class Downloader {
           name: deviceVideo.name,
           course: deviceVideo.course,
           guid: deviceVideo.guid,
-          watched: "synced",
+          watched: "true",
           path: deviceVideo.path,
           date: deviceVideo.date);
       DatabaseHelper().updateVideo(watchedVideo);

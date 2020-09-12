@@ -72,7 +72,7 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
         ..badCertificateCallback =
             ((X509Certificate cert, String host, int port) => trustSelfSigned);
       HttpClientRequest httpClientRequest = await httpClient.getUrl(Uri.parse(
-          "https://turtletech.ddns.me:100/" + cellNumber + "/" + guid));
+          "https://turtletech.ddns.me:100/mobile/downloadPdf/" + cellNumber + "/" + guid));
 
       HttpClientResponse httpClientResponse = await httpClientRequest.close();
       received = 0;
