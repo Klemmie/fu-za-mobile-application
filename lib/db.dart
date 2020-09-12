@@ -11,7 +11,7 @@ class DatabaseHelper {
       join(await getDatabasesPath(), 'user.db'),
       onCreate: (db, version) {
         return db.execute(
-          "CREATE TABLE user(companyName TEXT, registeredCourses TEXT, cellNumber TEXT)",
+          "CREATE TABLE user(companyName TEXT, registeredCourses TEXT, cellNumber TEXT, date TEXT)",
         );
       },
       version: 1,
@@ -28,6 +28,17 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> updateUser(User user) async {
+    final db = await vidConn();
+
+    await db.update(
+      'user',
+      user.toMap(),
+      where: "cellNumber = ?",
+      whereArgs: [user.cellNumber],
+    );
+  }
+
   Future<User> user() async {
     final Database db = await userConn();
 
@@ -38,6 +49,7 @@ class DatabaseHelper {
         companyName: maps[i]['companyName'],
         registeredCourses: maps[i]['registeredCourses'],
         cellNumber: maps[i]['cellNumber'],
+        date: maps[i]['date'],
       );
     });
     if (users.isEmpty) {

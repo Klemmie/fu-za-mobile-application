@@ -71,10 +71,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
-    // Ensure disposing of the VideoPlayerController to free up resources.
     controller.dispose();
     _chewieController.dispose();
-    print('Disposed');
 
     super.dispose();
   }

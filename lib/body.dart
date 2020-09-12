@@ -8,6 +8,7 @@ import 'package:fu_za_mobile_application/video.dart';
 import 'package:fu_za_mobile_application/videoplayer.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'downloader.dart';
 
@@ -211,6 +212,14 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
     return returns;
   }
 
+  _launchUrl() async {
+    const url = "https://www.akukhanya.co.za/fu-za-hub-is-reaching-for-the-stars#:~:text=Fu%2DZa%20means%20Future%20South%20Africa%20(ZA).";
+    if(await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
   @override
   Widget build(BuildContext context) {
     Widget titleSection = Container(
@@ -269,9 +278,8 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
                       );
               }),
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {},
-            label: Text('${received}/${total} B'),
-            icon: Icon(Icons.save_alt),
+            onPressed: _launchUrl,
+            icon: Icon(Icons.cloud),
             backgroundColor: Color.fromRGBO(51, 153, 102, 1),
           ),
         ),

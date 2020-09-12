@@ -18,6 +18,19 @@ class Downloader {
     User user = await DatabaseHelper().user();
 
     if (user != null) {
+      if (DateTime.parse(user.date).difference(DateTime.now()) >=
+          new Duration(days: 1)) {
+        final response = await sendRequestToServer(
+            'get', 'user/userDetails/' + user.cellNumber);
+
+        if (response.statusCode == 200) {
+          User updateUser = User.fromJson(json.decode(response.body));
+          await DatabaseHelper().updateUser(updateUser);
+          return updateUser;
+        } else {
+          throw Exception('Failed to get user details');
+        }
+      }
       return user;
     } else {
       String cellNumber = await initMobileNumberState();
@@ -143,42 +156,40 @@ class Downloader {
 
     int hour = new DateTime.now().hour;
     if (hour <= 18 || hour >= 23) {
-      print('Download time baby!');
-    } else
-      print('Sorry neh...');
-
-    for (String course in user.registeredCourses.split(",")) {
-      Video firstVideo;
-      for (Video lcVid in local) {
-        if (lcVid.course == course) {
-          if (firstVideo == null ||
-              DateTime.parse(firstVideo.date)
-                  .isBefore(DateTime.parse(lcVid.date))) {
-            firstVideo = lcVid;
-          }
-        }
-      }
-
-      if (firstVideo == null ||
-          DateTime.parse(firstVideo.date).difference(DateTime.now()) >=
-              new Duration(days: 7)) {
-        List<Video> videoList = await getVideoListServer(course);
-
-        for (Video download in videoList) {
-          int add = 1;
-          for (Video deviceVideo in local) {
-            if (download.guid.compareTo(deviceVideo.guid) == 0) {
-              add = 0;
+      for (String course in user.registeredCourses.split(",")) {
+        Video firstVideo;
+        for (Video lcVid in local) {
+          if (lcVid.course == course) {
+            if (firstVideo == null ||
+                DateTime.parse(firstVideo.date)
+                    .isBefore(DateTime.parse(lcVid.date))) {
+              firstVideo = lcVid;
             }
           }
+        }
 
-          if (add == 1) {
-            downloadVideo(user.cellNumber, download);
-            break;
+        if (firstVideo == null ||
+            DateTime.parse(firstVideo.date).difference(DateTime.now()) >=
+                new Duration(days: 7)) {
+          List<Video> videoList = await getVideoListServer(course);
+
+          for (Video download in videoList) {
+            int add = 1;
+            for (Video deviceVideo in local) {
+              if (download.guid.compareTo(deviceVideo.guid) == 0) {
+                add = 0;
+              }
+            }
+
+            if (add == 1) {
+              downloadVideo(user.cellNumber, download);
+              break;
+            }
           }
         }
       }
-    }
+    } else
+      print('Sorry neh...');
 
     for (Video deviceVideo in local) {
       if (DateTime.parse(deviceVideo.date).difference(DateTime.now()) >
