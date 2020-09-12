@@ -213,13 +213,14 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
   }
 
   _launchUrl() async {
-    const url = "https://www.akukhanya.co.za/fu-za-hub-is-reaching-for-the-stars#:~:text=Fu%2DZa%20means%20Future%20South%20Africa%20(ZA).";
+    const url = "https://www.akukhanya.co.za/fu-za-hub-is-reaching-for-the-stars";
     if(await canLaunch(url)) {
       await launch(url);
     } else {
       throw 'Could not launch $url';
     }
   }
+
   @override
   Widget build(BuildContext context) {
     Widget titleSection = Container(
@@ -277,9 +278,10 @@ class FuZaStatefulWidgetState extends State<FuZaStatefulWidget> {
                         child: CircularProgressIndicator(),
                       );
               }),
-          floatingActionButton: FloatingActionButton.extended(
+          floatingActionButton: FloatingActionButton(
             onPressed: _launchUrl,
-            icon: Icon(Icons.cloud),
+            tooltip: 'Akukhanya',
+            child: Icon(Icons.cloud),
             backgroundColor: Color.fromRGBO(51, 153, 102, 1),
           ),
         ),
